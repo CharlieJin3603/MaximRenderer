@@ -1,5 +1,5 @@
 /*
-See LICENSE folder for this sample’s licensing information.
+See the LICENSE.txt file for this sample’s licensing information.
 
 Abstract:
 The header that contains the types and enumeration constants that the Metal shaders and the C/Objective-C source share.

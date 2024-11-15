@@ -59,8 +59,8 @@
 		51D315E426448C6A00199525 /* ninja.mtl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ninja.mtl; sourceTree = "<group>"; };
 		51D315EE26448D2400199525 /* ModelIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ModelIO.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.0.Internal.sdk/System/Library/Frameworks/ModelIO.framework; sourceTree = DEVELOPER_DIR; };
 		51F70000209BC3E90017E288 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		51F7FFC2209BC1C40017E288 /* RaytractinWithMotion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RaytractinWithMotion.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		51F7FFD4209BC1C60017E288 /* RaytractinWithMotion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RaytractinWithMotion.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		51F7FFC2209BC1C40017E288 /* Ray Tracing with Motion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Ray Tracing with Motion.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		51F7FFD4209BC1C60017E288 /* Ray Tracing with Motion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Ray Tracing with Motion.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		51F7FFDB209BC3520017E288 /* Renderer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Renderer.h; sourceTree = "<group>"; };
 		51F7FFDE209BC3520017E288 /* Transforms.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Transforms.h; sourceTree = "<group>"; };
 		51F7FFDF209BC3520017E288 /* ShaderTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
@@ -153,8 +153,8 @@
 		51E97F732016FC6700D09D13 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				51F7FFC2209BC1C40017E288 /* RaytractinWithMotion.app */,
-				51F7FFD4209BC1C60017E288 /* RaytractinWithMotion.app */,
+				51F7FFC2209BC1C40017E288 /* Ray Tracing with Motion.app */,
+				51F7FFD4209BC1C60017E288 /* Ray Tracing with Motion.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -204,15 +204,15 @@
 				AA3B48596124909973BBC0C4 /* LICENSE.txt */,
 			);
 			name = LICENSE;
-			path = LICENSE;
+			path = .;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		51F7FFB1209BC1C40017E288 /* RaytracingWithMotion-iOS */ = {
+		51F7FFB1209BC1C40017E288 /* iOS - Ray Tracing with Motion */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 51F7FFBF209BC1C40017E288 /* Build configuration list for PBXNativeTarget "RaytracingWithMotion-iOS" */;
+			buildConfigurationList = 51F7FFBF209BC1C40017E288 /* Build configuration list for PBXNativeTarget "iOS - Ray Tracing with Motion" */;
 			buildPhases = (
 				51F7FFB2209BC1C40017E288 /* Sources */,
 				51F7FFB9209BC1C40017E288 /* Frameworks */,
@@ -222,14 +222,14 @@
 			);
 			dependencies = (
 			);
-			name = "RaytracingWithMotion-iOS";
+			name = "iOS - Ray Tracing with Motion";
 			productName = "SimpleRenderingSample-iOS";
-			productReference = 51F7FFC2209BC1C40017E288 /* RaytractinWithMotion.app */;
+			productReference = 51F7FFC2209BC1C40017E288 /* Ray Tracing with Motion.app */;
 			productType = "com.apple.product-type.application";
 		};
-		51F7FFC4209BC1C60017E288 /* RaytracingWithMotion-macOS */ = {
+		51F7FFC4209BC1C60017E288 /* macOS - Ray Tracing with Motion */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 51F7FFD1209BC1C60017E288 /* Build configuration list for PBXNativeTarget "RaytracingWithMotion-macOS" */;
+			buildConfigurationList = 51F7FFD1209BC1C60017E288 /* Build configuration list for PBXNativeTarget "macOS - Ray Tracing with Motion" */;
 			buildPhases = (
 				51F7FFC5209BC1C60017E288 /* Sources */,
 				51F7FFCC209BC1C60017E288 /* Frameworks */,
@@ -239,9 +239,9 @@
 			);
 			dependencies = (
 			);
-			name = "RaytracingWithMotion-macOS";
+			name = "macOS - Ray Tracing with Motion";
 			productName = "SimpleRenderingSample-macOS";
-			productReference = 51F7FFD4209BC1C60017E288 /* RaytractinWithMotion.app */;
+			productReference = 51F7FFD4209BC1C60017E288 /* Ray Tracing with Motion.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -252,6 +252,8 @@
 			attributes = {
 				LastUpgradeCheck = 1200;
 				ORGANIZATIONNAME = Apple;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = 51E97F672016FC6600D09D13 /* Build configuration list for PBXProject "RaytracingWithMotion" */;
 			compatibilityVersion = "Xcode 9.3";
@@ -266,8 +268,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				51F7FFC4209BC1C60017E288 /* RaytracingWithMotion-macOS */,
-				51F7FFB1209BC1C40017E288 /* RaytracingWithMotion-iOS */,
+				51F7FFB1209BC1C40017E288 /* iOS - Ray Tracing with Motion */,
+				51F7FFC4209BC1C60017E288 /* macOS - Ray Tracing with Motion */,
 			);
 		};
 /* End PBXProject section */
@@ -387,7 +389,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_NAME = RaytractinWithMotion;
+				PRODUCT_NAME = RaytracingWithMotion;
 			};
 			name = Debug;
 		};
@@ -438,7 +440,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				PRODUCT_NAME = RaytractinWithMotion;
+				PRODUCT_NAME = RaytracingWithMotion;
 			};
 			name = Release;
 		};
@@ -447,9 +449,10 @@
 			baseConfigurationReference = 3E4404CA8055B67712E12153 /* SampleCode.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = Application/iOS/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -457,8 +460,8 @@
 					"@executable_path/Frameworks",
 				);
 				MTL_LANGUAGE_REVISION = Metal24;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.example.apple-samplecode.$(PRODUCT_NAME)${SAMPLE_CODE_DISAMBIGUATOR}";
-				PRODUCT_NAME = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.apple-samplecode.ray-tracing-with-motion${SAMPLE_CODE_DISAMBIGUATOR}";
+				PRODUCT_NAME = "Ray Tracing with Motion";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -470,9 +473,10 @@
 			baseConfigurationReference = 3E4404CA8055B67712E12153 /* SampleCode.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = Application/iOS/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -480,8 +484,8 @@
 					"@executable_path/Frameworks",
 				);
 				MTL_LANGUAGE_REVISION = Metal24;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.example.apple-samplecode.$(PRODUCT_NAME)${SAMPLE_CODE_DISAMBIGUATOR}";
-				PRODUCT_NAME = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.apple-samplecode.ray-tracing-with-motion${SAMPLE_CODE_DISAMBIGUATOR}";
+				PRODUCT_NAME = "Ray Tracing with Motion";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -499,6 +503,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = Application/macOS/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -506,8 +511,8 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MTL_LANGUAGE_REVISION = Metal24;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.example.apple-samplecode.$(PRODUCT_NAME)${SAMPLE_CODE_DISAMBIGUATOR}";
-				PRODUCT_NAME = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.apple-samplecode.ray-tracing-with-motion${SAMPLE_CODE_DISAMBIGUATOR}";
+				PRODUCT_NAME = "Ray Tracing with Motion";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 			};
@@ -523,6 +528,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = Application/macOS/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -530,8 +536,8 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MTL_LANGUAGE_REVISION = Metal24;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.example.apple-samplecode.$(PRODUCT_NAME)${SAMPLE_CODE_DISAMBIGUATOR}";
-				PRODUCT_NAME = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.apple-samplecode.ray-tracing-with-motion${SAMPLE_CODE_DISAMBIGUATOR}";
+				PRODUCT_NAME = "Ray Tracing with Motion";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 			};
@@ -549,7 +555,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		51F7FFBF209BC1C40017E288 /* Build configuration list for PBXNativeTarget "RaytracingWithMotion-iOS" */ = {
+		51F7FFBF209BC1C40017E288 /* Build configuration list for PBXNativeTarget "iOS - Ray Tracing with Motion" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				51F7FFC0209BC1C40017E288 /* Debug */,
@@ -558,7 +564,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		51F7FFD1209BC1C60017E288 /* Build configuration list for PBXNativeTarget "RaytracingWithMotion-macOS" */ = {
+		51F7FFD1209BC1C60017E288 /* Build configuration list for PBXNativeTarget "macOS - Ray Tracing with Motion" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				51F7FFD2209BC1C60017E288 /* Debug */,

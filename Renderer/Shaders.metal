@@ -1,5 +1,5 @@
 /*
-See LICENSE folder for this sample’s licensing information.
+See the LICENSE.txt file for this sample’s licensing information.
 
 Abstract:
 The Metal shaders to use for this sample.
@@ -296,7 +296,7 @@ kernel void raytracingKernel(uint2 tid [[thread_position_in_grid]],
             }
             else
             {
-                // The kernel intermpolates normal and color values because the
+                // The kernel interpolates normal and color values because the
                 // intersected object has primitive_motion.
                 float scaledTime = time * meshResources.primitiveMotionKeyframeCount;
 

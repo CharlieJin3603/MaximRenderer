@@ -1,5 +1,5 @@
 /*
-See LICENSE folder for this sample’s licensing information.
+See the LICENSE.txt file for this sample’s licensing information.
 
 Abstract:
 The implementation of the class that describes objects in a scene.
@@ -395,9 +395,7 @@ float3 getTriangleNormal(float3 v0, float3 v1, float3 v2)
 
 @end
 
-@implementation GeometryInstance {
-    matrix_float4x4 *_transforms;
-}
+@implementation GeometryInstance
 
 - (instancetype)initWithGeometry:(Geometry *)geometry
                       transforms:(matrix_float4x4 *)transforms
