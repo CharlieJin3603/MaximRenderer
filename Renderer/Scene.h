@@ -66,6 +66,15 @@ MTLResourceOptions getManagedBufferStorageMode();
                transform:(matrix_float4x4)transform
            inwardNormals:(bool)inwardNormals;
 
+// Add a torus primitive.
+- (void)addTorusWithMajorRadius:(float)majorRadius
+                   minorRadius:(float)minorRadius
+                radialSegments:(NSUInteger)radialSegments
+              tubularSegments:(NSUInteger)tubularSegments
+                         color:(vector_float3)color
+                     transform:(matrix_float4x4)transform
+                 inwardNormals:(bool)inwardNormals;
+
 // Add the vertex data from a 3D model located at the given URL.
 - (void)addGeometryWithURL:(NSURL *)URL;
 
@@ -190,3 +199,4 @@ MTLResourceOptions getManagedBufferStorageMode();
 @end
 
 #endif
+

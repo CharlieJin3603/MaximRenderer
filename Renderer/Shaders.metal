@@ -262,6 +262,9 @@ kernel void raytracingKernel(uint2 tid [[thread_position_in_grid]],
                 accumulatedColor = float3(1.0f, 1.0f, 1.0f);
                 break;
             }
+            
+            // Check if this geometry is unlit (emissive/self-lit).
+            bool isUnlit = (mask == GEOMETRY_MASK_UNLIT);
 
             // The ray hits something. Look up the transformation matrix for this instance.
             
@@ -331,6 +334,16 @@ kernel void raytracingKernel(uint2 tid [[thread_position_in_grid]],
 
             // Transform the normal from object to world space.
             float3 worldSpaceSurfaceNormal = transformDirection(objectSpaceSurfaceNormal, objectToWorldSpaceTransform);
+            
+            // For unlit geometry, skip lighting calculations and just use the surface color directly.
+            if (isUnlit)
+            {
+                // Add the unlit surface color to the accumulated color.
+                accumulatedColor += surfaceColor * color;
+                
+                // Stop the ray path here - unlit objects don't bounce light.
+                break;
+            }
             
             // Choose a random light source to sample.
             float lightSample = halton(offset + frameData.frameIndex, 3 + bounce * 5 + 0);

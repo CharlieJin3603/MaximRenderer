@@ -30,6 +30,19 @@ float3 getTriangleNormal(float3 v0, float3 v1, float3 v2)
     return cross(e1, e2);
 }
 
+// Compute the normal matrix (inverse-transpose of the upper-left 3x3 of a 4x4 transform)
+static inline matrix_float3x3 normalMatrixFrom4x4(matrix_float4x4 m)
+{
+    matrix_float3x3 upperLeft = {
+        m.columns[0].xyz,
+        m.columns[1].xyz,
+        m.columns[2].xyz
+    };
+    // Inverse-transpose for correct normal transformation under non-uniform scale
+    matrix_float3x3 invT = simd_transpose(simd_inverse(upperLeft));
+    return invT;
+}
+
 @implementation TriangleKeyframeData
 {
     id <MTLBuffer> _vertexPositionBuffer;
@@ -208,6 +221,113 @@ float3 getTriangleNormal(float3 v0, float3 v1, float3 v2)
                                            i2:cubeIndices[face][2]
                                            i3:cubeIndices[face][3]
                                 inwardNormals:inwardNormals];
+        }
+    }
+}
+
+// Add a torus primitive with smooth vertex normals.
+- (void)addTorusWithMajorRadius:(float)majorRadius
+                   minorRadius:(float)minorRadius
+                radialSegments:(NSUInteger)radialSegments
+              tubularSegments:(NSUInteger)tubularSegments
+                         color:(vector_float3)color
+                     transform:(matrix_float4x4)transform
+                 inwardNormals:(bool)inwardNormals
+{
+    // Clamp the segment counts to reasonable minimums
+    NSUInteger rs = radialSegments < 3 ? 3 : radialSegments;
+    NSUInteger ts = tubularSegments < 3 ? 3 : tubularSegments;
+
+    const float TWO_PI = 6.28318530717958647692f;
+
+    // Precompute normal matrix for transforming normals.
+    matrix_float3x3 nrmMat = normalMatrixFrom4x4(transform);
+
+    // Build a (rs+1) x (ts+1) grid to wrap seamlessly
+    const NSUInteger cols = ts + 1;
+    const NSUInteger rows = rs + 1;
+    const NSUInteger vertCount = rows * cols;
+
+    std::vector<vector_float3> gridPositions;
+    std::vector<vector_float3> gridNormals;
+    std::vector<vector_float3> gridTangents;
+    gridPositions.resize(vertCount);
+    gridNormals.resize(vertCount);
+    gridTangents.resize(vertCount);
+
+    auto idx = [cols](NSUInteger i, NSUInteger j) -> NSUInteger { return i * cols + j; };
+
+    for (NSUInteger i = 0; i <= rs; ++i) {
+        float u = (float)i / (float)rs * TWO_PI;
+        float cu = cosf(u);
+        float su = sinf(u);
+        float3 center = vector3(majorRadius * cu, 0.0f, majorRadius * su);
+
+        for (NSUInteger j = 0; j <= ts; ++j) {
+            float v = (float)j / (float)ts * TWO_PI;
+            float cv = cosf(v);
+            float sv = sinf(v);
+
+            float3 local = vector3((majorRadius + minorRadius * cv) * cu,
+                                   minorRadius * sv,
+                                   (majorRadius + minorRadius * cv) * su);
+
+            // Object-space normal is from the center of the tube to the surface point
+            float3 n = normalize(local - center);
+            if (inwardNormals) {
+                n = -n;
+            }
+
+            // Compute tangent vector in the v direction (around the tube)
+            // Derivative with respect to v
+            float3 tangent = normalize(vector3(-minorRadius * sv * cu,
+                                                minorRadius * cv,
+                                                -minorRadius * sv * su));
+            
+            if (inwardNormals) {
+                tangent = -tangent;
+            }
+
+            // Transform position
+            float4 p4 = vector4(local.x, local.y, local.z, 1.0f);
+            p4 = transform * p4;
+            float3 p = p4.xyz;
+
+            // Transform normal and tangent, then renormalize
+            float3 tn = normalize(nrmMat * n);
+            float3 tt = normalize(nrmMat * tangent);
+
+            gridPositions[idx(i, j)] = p;
+            gridNormals[idx(i, j)] = tn;
+            gridTangents[idx(i, j)] = tt;
+        }
+    }
+
+    // Create triangles (two per quad)
+    auto pushVertex = [&](NSUInteger index) {
+        _vertices.push_back(gridPositions[index]);
+        _normals.push_back(gridNormals[index]);
+        // Use normals as colors (map from [-1, 1] to [0, 1])
+        float3 normalColor = (gridNormals[index] + 1.0f) * 0.5f;
+        _colors.push_back(normalColor);
+    };
+
+    for (NSUInteger i = 0; i < rs; ++i) {
+        for (NSUInteger j = 0; j < ts; ++j) {
+            NSUInteger a = idx(i,     j);
+            NSUInteger b = idx(i + 1, j);
+            NSUInteger c = idx(i + 1, j + 1);
+            NSUInteger d = idx(i,     j + 1);
+
+            if (!inwardNormals) {
+                // Winding for outward-facing triangles
+                pushVertex(a); pushVertex(b); pushVertex(d);
+                pushVertex(b); pushVertex(c); pushVertex(d);
+            } else {
+                // Flip winding for inward-facing triangles
+                pushVertex(a); pushVertex(d); pushVertex(b);
+                pushVertex(b); pushVertex(d); pushVertex(c);
+            }
         }
     }
 }
@@ -546,6 +666,26 @@ float3 getTriangleNormal(float3 v0, float3 v1, float3 v2)
                                    transform:transform
                                inwardNormals:true];
 
+    // Add a torus in the scene as an example primitive.
+    TriangleKeyframeData *torusKeyframeData = [[TriangleKeyframeData alloc] initWithDevice:device];
+    Geometry *torusGeometry = [[Geometry alloc] initWithKeyframes:@[ torusKeyframeData ]];
+    [scene addGeometry:torusGeometry];
+
+    transform = matrix4x4_translation(0.0f, 0.6f, 0.6f) * matrix4x4_scale(0.6f, 0.6f, 0.6f);
+
+    [torusKeyframeData addTorusWithMajorRadius:0.5f
+                                   minorRadius:0.2f
+                                radialSegments:48
+                              tubularSegments:24
+                                         color:vector3(0.85f, 0.85f, 0.9f)
+                                     transform:transform
+                                 inwardNormals:false];
+
+    GeometryInstance *torusInstance = [[GeometryInstance alloc] initWithGeometry:torusGeometry
+                                                                        transform:matrix_identity_float4x4
+                                                                             mask:GEOMETRY_MASK_UNLIT];
+    [scene addInstance:torusInstance];
+
     transform = matrix4x4_translation(-0.335f, 0.6f, -0.29f) *
                 matrix4x4_rotation(0.3f, vector3(0.0f, 1.0f, 0.0f)) *
                 matrix4x4_scale(0.6f, 1.2f, 0.6f);
@@ -645,3 +785,4 @@ float3 getTriangleNormal(float3 v0, float3 v1, float3 v2)
 }
 
 @end
+
