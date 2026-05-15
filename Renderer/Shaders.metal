@@ -138,6 +138,49 @@ inline float3 alignHemisphereWithNormal(float3 sample, float3 normal)
     return sample.x * right + sample.y * up + sample.z * forward;
 }
 
+// --- Anisotropic GGX BRDF for brushed metal ---
+
+inline float3 F_Schlick(float3 F0, float VdotH) {
+    float f = 1.0f - VdotH;
+    float f5 = f * f * f * f * f;
+    return F0 + (1.0f - F0) * f5;
+}
+
+// Anisotropic GGX NDF (Burley 2012)
+inline float D_GGX_aniso(float3 H, float3 T, float3 B, float3 N, float ax, float ay) {
+    float HdotT = dot(H, T);
+    float HdotB = dot(H, B);
+    float HdotN = dot(H, N);
+    float d = HdotT * HdotT / (ax * ax) + HdotB * HdotB / (ay * ay) + HdotN * HdotN;
+    return 1.0f / (M_PI_F * ax * ay * d * d);
+}
+
+// Height-correlated Smith masking-shadowing for anisotropic GGX (Heitz 2014)
+inline float G2_GGX_aniso(float3 V, float3 L, float3 T, float3 B, float3 N,
+                            float ax, float ay)
+{
+    float VdotN = max(dot(V, N), 1e-4f);
+    float LdotN = max(dot(L, N), 1e-4f);
+    float VdotT = dot(V, T), VdotB = dot(V, B);
+    float LdotT = dot(L, T), LdotB = dot(L, B);
+    float a2V = (VdotT * ax) * (VdotT * ax) + (VdotB * ay) * (VdotB * ay);
+    float a2L = (LdotT * ax) * (LdotT * ax) + (LdotB * ay) * (LdotB * ay);
+    float LambdaV = (-1.0f + sqrt(1.0f + a2V / (VdotN * VdotN))) * 0.5f;
+    float LambdaL = (-1.0f + sqrt(1.0f + a2L / (LdotN * LdotN))) * 0.5f;
+    return 1.0f / (1.0f + LambdaV + LambdaL);
+}
+
+// Sample the anisotropic GGX NDF to get a microfacet half-vector
+inline float3 sampleGGXAniso(float2 u, float3 T, float3 B, float3 N, float ax, float ay) {
+    float phi     = atan2(ay * sin(2.0f * M_PI_F * u.x), ax * cos(2.0f * M_PI_F * u.x));
+    float cp      = cos(phi), sp = sin(phi);
+    float alpha2  = 1.0f / max(cp * cp / (ax * ax) + sp * sp / (ay * ay), 1e-8f);
+    float tan2    = alpha2 * u.y / max(1.0f - u.y, 1e-6f);
+    float cosT    = 1.0f / sqrt(1.0f + tan2);
+    float sinT    = sqrt(max(0.0f, 1.0f - cosT * cosT));
+    return normalize(sinT * cp * T + sinT * sp * B + cosT * N);
+}
+
 // The resources for a piece of triangle geometry.
 struct KeyframeResources
 {
@@ -262,6 +305,9 @@ kernel void raytracingKernel(uint2 tid [[thread_position_in_grid]],
                 accumulatedColor = float3(1.0f, 1.0f, 1.0f);
                 break;
             }
+            
+            // Check if this geometry is unlit (emissive/self-lit).
+            bool isUnlit = (mask == GEOMETRY_MASK_UNLIT);
 
             // The ray hits something. Look up the transformation matrix for this instance.
             
@@ -332,6 +378,16 @@ kernel void raytracingKernel(uint2 tid [[thread_position_in_grid]],
             // Transform the normal from object to world space.
             float3 worldSpaceSurfaceNormal = transformDirection(objectSpaceSurfaceNormal, objectToWorldSpaceTransform);
             
+            // For unlit geometry, skip lighting calculations and just use the surface color directly.
+            if (isUnlit)
+            {
+                // Add the unlit surface color to the accumulated color.
+                accumulatedColor += surfaceColor * color;
+                
+                // Stop the ray path here - unlit objects don't bounce light.
+                break;
+            }
+            
             // Choose a random light source to sample.
             float lightSample = halton(offset + frameData.frameIndex, 3 + bounce * 5 + 0);
             unsigned int lightIndex = min((unsigned int)(lightSample * frameData.lightCount), frameData.lightCount - 1);
@@ -348,60 +404,81 @@ kernel void raytracingKernel(uint2 tid [[thread_position_in_grid]],
             sampleAreaLight(areaLights[lightIndex], r, worldSpaceIntersectionPoint, worldSpaceLightDirection,
                             lightColor, lightDistance);
 
-            // Scale the light color by the cosine of the angle between the light direction and
-            // surface normal.
-            lightColor *= saturate(dot(worldSpaceSurfaceNormal, worldSpaceLightDirection));
-
-            // Scale the light color by the number of lights to compensate for the fact that
-            // the sample only samples one light source at random.
+            // Bake N·L and light count into lightColor (common for all material types).
+            float NdotL_direct = saturate(dot(worldSpaceSurfaceNormal, worldSpaceLightDirection));
+            lightColor *= NdotL_direct;
             lightColor *= frameData.lightCount;
 
-            // Scale the ray color by the color of the surface.  This simulates ths surface
-            // absorbing the light.
-            color *= surfaceColor;
-
-            // Compute the shadow ray. The shadow ray checks whether the sample position
-            // on the light source is visible from the current intersection point.
-            // If it is, the kernel adds lighting to the output image.
+            // Shadow ray (common for all material types).
             struct ray shadowRay;
-
-            // Add a small offset to the intersection point to avoid intersecting the same
-            // triangle again.
-            shadowRay.origin = worldSpaceIntersectionPoint + worldSpaceSurfaceNormal * 1e-3f;
-
-            // Travel toward the light source.
+            shadowRay.origin    = worldSpaceIntersectionPoint + worldSpaceSurfaceNormal * 1e-3f;
             shadowRay.direction = worldSpaceLightDirection;
-
-            // Don't overshoot the light source.
             shadowRay.max_distance = lightDistance - 1e-3f;
 
-            // The shadow rays check only whether there is an object between the intersection point
-            // and the light source.  Tell Metal to return after finding any intersection.
             i.accept_any_intersection(true);
-
             intersection = i.intersect(shadowRay, accelerationStructure, RAY_MASK_SHADOW, time);
-            
-            // If there is no intersection, the light source is visible from the original
-            // intersection point. Add the light's contribution to the image.
-            if (intersection.type == intersection_type::none)
-                accumulatedColor += lightColor * color;
+            bool notInShadow = (intersection.type == intersection_type::none);
 
-            // Choose a random direction to continue the path of the ray.  This causes
-            // light to bounce between surfaces.  The sample can apply a fair bit of math
-            // to compute the fraction of light that the current intersection point reflects to the
-            // previous point from the next point.  However, by choosing a random direction with
-            // probability proportional to the cosine (dot product) of the angle between the
-            // sample direction and surface normal, the math entirely cancels out except for
-            // multiplying by the surface color.  This sampling strategy also reduces the amount
-            // of noise in the output image.
-            r = float2(halton(offset + frameData.frameIndex, 3 + bounce * 5 + 3),
-                       halton(offset + frameData.frameIndex, 3 + bounce * 5 + 4));
+            float2 r_bounce = float2(halton(offset + frameData.frameIndex, 3 + bounce * 5 + 3),
+                                     halton(offset + frameData.frameIndex, 3 + bounce * 5 + 4));
 
-            float3 worldSpaceSampleDirection = sampleCosineWeightedHemisphere(r);
-            worldSpaceSampleDirection = alignHemisphereWithNormal(worldSpaceSampleDirection, worldSpaceSurfaceNormal);
+            if (mask == GEOMETRY_MASK_BRUSHED_METAL) {
+                // Decode the brushing tangent stored in the color channel.
+                float3 T = normalize(surfaceColor * 2.0f - 1.0f);
+                T = normalize(T - dot(T, worldSpaceSurfaceNormal) * worldSpaceSurfaceNormal);
+                float3 B = normalize(cross(worldSpaceSurfaceNormal, T));
 
-            ray.origin = worldSpaceIntersectionPoint + worldSpaceSurfaceNormal * 1e-3f;
-            ray.direction = worldSpaceSampleDirection;
+                // Brushed steel: low roughness along the ring, high roughness around the tube.
+                const float3 F0 = float3(0.95f, 0.93f, 0.88f);
+                const float  ax = 0.05f;
+                const float  ay = 0.40f;
+
+                float3 V    = -ray.direction;
+                float NdotV = max(dot(worldSpaceSurfaceNormal, V), 1e-4f);
+
+                // Direct lighting with anisotropic GGX BRDF.
+                if (notInShadow && NdotL_direct > 0.0f) {
+                    float3 H_d  = normalize(V + worldSpaceLightDirection);
+                    float VdotH = max(dot(V, H_d), 0.0f);
+                    float NdotH = max(dot(worldSpaceSurfaceNormal, H_d), 0.0f);
+                    float3 F    = F_Schlick(F0, VdotH);
+                    float  D    = D_GGX_aniso(H_d, T, B, worldSpaceSurfaceNormal, ax, ay);
+                    float  G2   = G2_GGX_aniso(V, worldSpaceLightDirection, T, B,
+                                               worldSpaceSurfaceNormal, ax, ay);
+                    float3 brdf = F * D * G2 / max(4.0f * NdotV * NdotL_direct, 1e-6f);
+                    accumulatedColor += lightColor * brdf * color;
+                }
+
+                // Sample the next bounce from the anisotropic GGX distribution.
+                float3 H_b      = sampleGGXAniso(r_bounce, T, B, worldSpaceSurfaceNormal, ax, ay);
+                float3 L_b      = reflect(-V, H_b);
+                float NdotL_b   = dot(worldSpaceSurfaceNormal, L_b);
+                float VdotH_b   = max(dot(V, H_b), 0.0f);
+                float NdotH_b   = max(dot(worldSpaceSurfaceNormal, H_b), 0.0f);
+
+                if (NdotL_b > 0.0f && NdotH_b > 0.0f && VdotH_b > 0.0f) {
+                    float3 F_b  = F_Schlick(F0, VdotH_b);
+                    float  G2_b = G2_GGX_aniso(V, L_b, T, B, worldSpaceSurfaceNormal, ax, ay);
+                    float3 w    = F_b * G2_b * VdotH_b / max(NdotV * NdotH_b, 1e-6f);
+                    color      *= w;
+                    ray.origin    = worldSpaceIntersectionPoint + worldSpaceSurfaceNormal * 1e-3f;
+                    ray.direction = L_b;
+                } else {
+                    break;
+                }
+            } else {
+                // Lambertian diffuse path.
+                color *= surfaceColor;
+
+                if (notInShadow)
+                    accumulatedColor += lightColor * color;
+
+                float3 worldSpaceSampleDirection = sampleCosineWeightedHemisphere(r_bounce);
+                worldSpaceSampleDirection = alignHemisphereWithNormal(worldSpaceSampleDirection,
+                                                                      worldSpaceSurfaceNormal);
+                ray.origin    = worldSpaceIntersectionPoint + worldSpaceSurfaceNormal * 1e-3f;
+                ray.direction = worldSpaceSampleDirection;
+            }
         }
 
         // Average this frame's sample with all of the previous frame's samples.

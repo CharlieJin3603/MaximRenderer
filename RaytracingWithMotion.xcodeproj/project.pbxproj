@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2AF5F5172FB6BC9900D0ED88 /* MetalFX.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2AF5F5162FB6BC9900D0ED88 /* MetalFX.framework */; };
 		3E9448D620BC6BF0001DD43A /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 3E9448D520BC6BF0001DD43A /* README.md */; };
 		40D8659D26F135F60065BDFB /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 40D8659C26F135F60065BDFB /* Main.storyboard */; };
 		40D865A026F1360B0065BDFB /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 40D8659E26F1360B0065BDFB /* LaunchScreen.storyboard */; };
@@ -40,7 +41,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		3E4404CA8055B67712E12153 /* SampleCode.xcconfig */ = {isa = PBXFileReference; name = SampleCode.xcconfig; path = Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
+		2AF5F5162FB6BC9900D0ED88 /* MetalFX.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalFX.framework; path = System/Library/Frameworks/MetalFX.framework; sourceTree = SDKROOT; };
+		3E4404CA8055B67712E12153 /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = SampleCode.xcconfig; path = Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
 		3E9448D520BC6BF0001DD43A /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		40D8659C26F135F60065BDFB /* Main.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 		40D8659E26F1360B0065BDFB /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -71,7 +73,7 @@
 		51FA2C0E24EDCF0000C94F4E /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS14.0.sdk/System/Library/Frameworks/MetalKit.framework; sourceTree = DEVELOPER_DIR; };
 		51FA2C1024EDCF0600C94F4E /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		5471F0E826499B4F006446B6 /* ModelIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ModelIO.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS15.0.Internal.sdk/System/Library/Frameworks/ModelIO.framework; sourceTree = DEVELOPER_DIR; };
-		AA3B48596124909973BBC0C4 /* LICENSE.txt */ = {isa = PBXFileReference; includeInIndex = 1; path = LICENSE.txt; sourceTree = "<group>"; };
+		AA3B48596124909973BBC0C4 /* LICENSE.txt */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = LICENSE.txt; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +90,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2AF5F5172FB6BC9900D0ED88 /* MetalFX.framework in Frameworks */,
 				51D315EF26448D2400199525 /* ModelIO.framework in Frameworks */,
 				51FA2C1124EDCF0600C94F4E /* MetalKit.framework in Frameworks */,
 			);
@@ -162,6 +165,7 @@
 		51E97FA42017014100D09D13 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				2AF5F5162FB6BC9900D0ED88 /* MetalFX.framework */,
 				51D315EE26448D2400199525 /* ModelIO.framework */,
 				5471F0E826499B4F006446B6 /* ModelIO.framework */,
 				51FA2C0E24EDCF0000C94F4E /* MetalKit.framework */,
@@ -252,8 +256,6 @@
 			attributes = {
 				LastUpgradeCheck = 1200;
 				ORGANIZATIONNAME = Apple;
-				TargetAttributes = {
-				};
 			};
 			buildConfigurationList = 51E97F672016FC6600D09D13 /* Build configuration list for PBXProject "RaytracingWithMotion" */;
 			compatibilityVersion = "Xcode 9.3";
@@ -501,7 +503,7 @@
 				CODE_SIGN_IDENTITY = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 83GDPKGJPK;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = Application/macOS/Info.plist;
@@ -526,7 +528,7 @@
 				CODE_SIGN_IDENTITY = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 83GDPKGJPK;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = Application/macOS/Info.plist;

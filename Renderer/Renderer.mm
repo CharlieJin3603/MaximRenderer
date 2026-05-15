@@ -6,6 +6,7 @@ The implementation of the renderer class that performs Metal setup and per-frame
 */
 
 #import <simd/simd.h>
+#import <MetalFX/MetalFX.h>
 
 #import "Renderer.h"
 #import "Transforms.h"
@@ -44,6 +45,11 @@ static const NSUInteger kMaxFramesInFlight = 3;
     unsigned int _frameIndex;
 
     Scene *_scene;
+
+    float _renderScale;
+    CGSize _renderSize;
+    id<MTLFXSpatialScaler> _spatialScaler;
+    id<MTLTexture> _upscaledTexture;
 }
 
 - (nonnull instancetype)initWithDevice:(nonnull id<MTLDevice>)device
@@ -59,6 +65,7 @@ static const NSUInteger kMaxFramesInFlight = 3;
         _sem = dispatch_semaphore_create(kMaxFramesInFlight);
 
         _scene = scene;
+        _renderScale = 0.5f;
 
         [self loadMetal];
         [self createBuffers];
@@ -366,14 +373,45 @@ static const NSUInteger kMaxFramesInFlight = 3;
 {
     _drawableSize = size;
 
+    // Determine the render resolution. If MetalFX spatial scaling is supported,
+    // render at a reduced resolution and upscale to the full drawable size.
+    _spatialScaler = nil;
+    _upscaledTexture = nil;
+
+    if ([MTLFXSpatialScalerDescriptor supportsDevice:_device]) {
+        _renderSize = CGSizeMake(floor(size.width * _renderScale),
+                                 floor(size.height * _renderScale));
+
+        MTLFXSpatialScalerDescriptor *scalerDesc = [[MTLFXSpatialScalerDescriptor alloc] init];
+        scalerDesc.inputWidth          = (NSUInteger)_renderSize.width;
+        scalerDesc.inputHeight         = (NSUInteger)_renderSize.height;
+        scalerDesc.outputWidth         = (NSUInteger)size.width;
+        scalerDesc.outputHeight        = (NSUInteger)size.height;
+        scalerDesc.colorTextureFormat  = MTLPixelFormatRGBA32Float;
+        scalerDesc.outputTextureFormat = MTLPixelFormatRGBA16Float;
+
+        _spatialScaler = [scalerDesc newSpatialScalerWithDevice:_device];
+
+        MTLTextureDescriptor *upscaledDesc = [[MTLTextureDescriptor alloc] init];
+        upscaledDesc.pixelFormat = MTLPixelFormatRGBA16Float;
+        upscaledDesc.textureType = MTLTextureType2D;
+        upscaledDesc.width       = (NSUInteger)size.width;
+        upscaledDesc.height      = (NSUInteger)size.height;
+        upscaledDesc.storageMode = MTLStorageModePrivate;
+        upscaledDesc.usage       = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite | MTLTextureUsageRenderTarget;
+        _upscaledTexture = [_device newTextureWithDescriptor:upscaledDesc];
+    } else {
+        _renderSize = size;
+    }
+
     // Create a pair of textures, which the ray tracing kernel uses to accumulate
     // samples over several frames.
     MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
 
     textureDescriptor.pixelFormat = MTLPixelFormatRGBA32Float;
     textureDescriptor.textureType = MTLTextureType2D;
-    textureDescriptor.width = size.width;
-    textureDescriptor.height = size.height;
+    textureDescriptor.width  = (NSUInteger)_renderSize.width;
+    textureDescriptor.height = (NSUInteger)_renderSize.height;
 
     // Store this in private memory because only the GPU reads or writes to this texture.
     textureDescriptor.storageMode = MTLStorageModePrivate;
@@ -398,18 +436,24 @@ static const NSUInteger kMaxFramesInFlight = 3;
     _randomTexture = [_device newTextureWithDescriptor:textureDescriptor];
 
     // Initialize the random values.
-    uint32_t *randomValues = (uint32_t *)malloc(sizeof(uint32_t) * size.width * size.height);
+    NSUInteger renderPixelCount = (NSUInteger)(_renderSize.width * _renderSize.height);
+    uint32_t *randomValues = (uint32_t *)malloc(sizeof(uint32_t) * renderPixelCount);
 
-    for (NSUInteger i = 0; i < size.width * size.height; i++)
+    for (NSUInteger i = 0; i < renderPixelCount; i++)
         randomValues[i] = rand() % (1024 * 1024);
 
-    [_randomTexture replaceRegion:MTLRegionMake2D(0, 0, size.width, size.height)
+    [_randomTexture replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)_renderSize.width, (NSUInteger)_renderSize.height)
                       mipmapLevel:0
                         withBytes:randomValues
-                      bytesPerRow:sizeof(uint32_t) * size.width];
+                      bytesPerRow:sizeof(uint32_t) * (NSUInteger)_renderSize.width];
 
     free(randomValues);
 
+    _frameIndex = 0;
+}
+
+- (void)resetAccumulation
+{
     _frameIndex = 0;
 }
 
@@ -440,8 +484,8 @@ static const NSUInteger kMaxFramesInFlight = 3;
     frameData->camera.right *= imagePlaneWidth;
     frameData->camera.up *= imagePlaneHeight;
 
-    frameData->width = (unsigned int)_drawableSize.width;
-    frameData->height = (unsigned int)_drawableSize.height;
+    frameData->width = (unsigned int)_renderSize.width;
+    frameData->height = (unsigned int)_renderSize.height;
 
     frameData->frameIndex = _frameIndex++;
 
@@ -469,8 +513,8 @@ static const NSUInteger kMaxFramesInFlight = 3;
 
     [self updateFrameData];
 
-    NSUInteger width = (NSUInteger)_drawableSize.width;
-    NSUInteger height = (NSUInteger)_drawableSize.height;
+    NSUInteger width = (NSUInteger)_renderSize.width;
+    NSUInteger height = (NSUInteger)_renderSize.height;
 
     // Launch a rectangular grid of threads on the GPU to perform ray tracing, with one thread per
     // pixel.  The sample needs to align the number of threads to a multiple of the threadgroup
@@ -523,6 +567,13 @@ static const NSUInteger kMaxFramesInFlight = 3;
     // Swap the source and destination accumulation targets for the next frame.
     std::swap(_accumulationTargets[0], _accumulationTargets[1]);
 
+    // Upscale the accumulated ray-traced result to the full drawable resolution.
+    if (_spatialScaler) {
+        _spatialScaler.colorTexture  = _accumulationTargets[0];
+        _spatialScaler.outputTexture = _upscaledTexture;
+        [_spatialScaler encodeToCommandBuffer:commandBuffer];
+    }
+
     if (view.currentDrawable)
     {
         // Copy the resulting image into the view using the graphics pipeline because the sample
@@ -541,7 +592,7 @@ static const NSUInteger kMaxFramesInFlight = 3;
 
         [renderEncoder setRenderPipelineState:_copyPipeline];
 
-        [renderEncoder setFragmentTexture:_accumulationTargets[0] atIndex:0];
+        [renderEncoder setFragmentTexture:(_spatialScaler ? _upscaledTexture : _accumulationTargets[0]) atIndex:0];
 
         // Draw a quad that fills the screen.
         [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
