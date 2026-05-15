@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2AF5F5172FB6BC9900D0ED88 /* MetalFX.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2AF5F5162FB6BC9900D0ED88 /* MetalFX.framework */; };
 		3E9448D620BC6BF0001DD43A /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 3E9448D520BC6BF0001DD43A /* README.md */; };
 		40D8659D26F135F60065BDFB /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 40D8659C26F135F60065BDFB /* Main.storyboard */; };
 		40D865A026F1360B0065BDFB /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 40D8659E26F1360B0065BDFB /* LaunchScreen.storyboard */; };
@@ -40,6 +41,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2AF5F5162FB6BC9900D0ED88 /* MetalFX.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalFX.framework; path = System/Library/Frameworks/MetalFX.framework; sourceTree = SDKROOT; };
 		3E4404CA8055B67712E12153 /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = SampleCode.xcconfig; path = Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
 		3E9448D520BC6BF0001DD43A /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		40D8659C26F135F60065BDFB /* Main.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
@@ -88,6 +90,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2AF5F5172FB6BC9900D0ED88 /* MetalFX.framework in Frameworks */,
 				51D315EF26448D2400199525 /* ModelIO.framework in Frameworks */,
 				51FA2C1124EDCF0600C94F4E /* MetalKit.framework in Frameworks */,
 			);
@@ -162,6 +165,7 @@
 		51E97FA42017014100D09D13 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				2AF5F5162FB6BC9900D0ED88 /* MetalFX.framework */,
 				51D315EE26448D2400199525 /* ModelIO.framework */,
 				5471F0E826499B4F006446B6 /* ModelIO.framework */,
 				51FA2C0E24EDCF0000C94F4E /* MetalKit.framework */,
