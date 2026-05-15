@@ -48,8 +48,14 @@ static const NSUInteger kMaxFramesInFlight = 3;
 
     float _renderScale;
     CGSize _renderSize;
+    BOOL _useSpatialScaling;
     id<MTLFXSpatialScaler> _spatialScaler;
+    id<MTLFXTemporalScaler> _temporalScaler;
     id<MTLTexture> _upscaledTexture;
+    id<MTLTexture> _motionTexture;
+    id<MTLTexture> _depthTexture;
+    Camera _prevCamera;
+    BOOL _temporalScalerNeedsReset;
 }
 
 - (nonnull instancetype)initWithDevice:(nonnull id<MTLDevice>)device
@@ -373,12 +379,16 @@ static const NSUInteger kMaxFramesInFlight = 3;
 {
     _drawableSize = size;
 
-    // Determine the render resolution. If MetalFX spatial scaling is supported,
+    // Determine the render resolution. If a MetalFX scaler is available,
     // render at a reduced resolution and upscale to the full drawable size.
     _spatialScaler = nil;
+    _temporalScaler = nil;
     _upscaledTexture = nil;
+    _motionTexture = nil;
+    _depthTexture = nil;
+    _temporalScalerNeedsReset = YES;
 
-    if ([MTLFXSpatialScalerDescriptor supportsDevice:_device]) {
+    if (_useSpatialScaling && [MTLFXSpatialScalerDescriptor supportsDevice:_device]) {
         _renderSize = CGSizeMake(floor(size.width * _renderScale),
                                  floor(size.height * _renderScale));
 
@@ -400,9 +410,47 @@ static const NSUInteger kMaxFramesInFlight = 3;
         upscaledDesc.storageMode = MTLStorageModePrivate;
         upscaledDesc.usage       = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite | MTLTextureUsageRenderTarget;
         _upscaledTexture = [_device newTextureWithDescriptor:upscaledDesc];
+    } else if ([MTLFXTemporalScalerDescriptor supportsDevice:_device]) {
+        _renderSize = CGSizeMake(floor(size.width * _renderScale),
+                                 floor(size.height * _renderScale));
+
+        MTLFXTemporalScalerDescriptor *scalerDesc = [[MTLFXTemporalScalerDescriptor alloc] init];
+        scalerDesc.inputWidth          = (NSUInteger)_renderSize.width;
+        scalerDesc.inputHeight         = (NSUInteger)_renderSize.height;
+        scalerDesc.outputWidth         = (NSUInteger)size.width;
+        scalerDesc.outputHeight        = (NSUInteger)size.height;
+        scalerDesc.colorTextureFormat  = MTLPixelFormatRGBA32Float;
+        scalerDesc.motionTextureFormat = MTLPixelFormatRG16Float;
+        scalerDesc.depthTextureFormat  = MTLPixelFormatR32Float;
+        scalerDesc.outputTextureFormat = MTLPixelFormatRGBA16Float;
+
+        _temporalScaler = [scalerDesc newTemporalScalerWithDevice:_device];
+
+        MTLTextureDescriptor *upscaledDesc = [[MTLTextureDescriptor alloc] init];
+        upscaledDesc.pixelFormat = MTLPixelFormatRGBA16Float;
+        upscaledDesc.textureType = MTLTextureType2D;
+        upscaledDesc.width       = (NSUInteger)size.width;
+        upscaledDesc.height      = (NSUInteger)size.height;
+        upscaledDesc.storageMode = MTLStorageModePrivate;
+        upscaledDesc.usage       = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite | MTLTextureUsageRenderTarget;
+        _upscaledTexture = [_device newTextureWithDescriptor:upscaledDesc];
     } else {
         _renderSize = size;
     }
+
+    // Always create motion and depth textures at render resolution for the shader to write into.
+    MTLTextureDescriptor *auxDesc = [[MTLTextureDescriptor alloc] init];
+    auxDesc.textureType = MTLTextureType2D;
+    auxDesc.width       = (NSUInteger)_renderSize.width;
+    auxDesc.height      = (NSUInteger)_renderSize.height;
+    auxDesc.storageMode = MTLStorageModePrivate;
+    auxDesc.usage       = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+
+    auxDesc.pixelFormat = MTLPixelFormatRG16Float;
+    _motionTexture      = [_device newTextureWithDescriptor:auxDesc];
+
+    auxDesc.pixelFormat = MTLPixelFormatR32Float;
+    _depthTexture       = [_device newTextureWithDescriptor:auxDesc];
 
     // Create a pair of textures, which the ray tracing kernel uses to accumulate
     // samples over several frames.
@@ -455,6 +503,7 @@ static const NSUInteger kMaxFramesInFlight = 3;
 - (void)resetAccumulation
 {
     _frameIndex = 0;
+    _temporalScalerNeedsReset = YES;
 }
 
 - (void)updateFrameData
@@ -462,6 +511,9 @@ static const NSUInteger kMaxFramesInFlight = 3;
     _frameDataIndex = (_frameDataIndex + 1) % kMaxFramesInFlight;
     
     FrameData *frameData =  (FrameData *)_frameDataBuffers[_frameDataIndex].contents;
+
+    // Pass the previous frame's camera so the shader can compute motion vectors.
+    frameData->prevCamera = _prevCamera;
 
     vector_float3 position = _scene.cameraPosition;
     vector_float3 target = _scene.cameraTarget;
@@ -483,6 +535,9 @@ static const NSUInteger kMaxFramesInFlight = 3;
 
     frameData->camera.right *= imagePlaneWidth;
     frameData->camera.up *= imagePlaneHeight;
+
+    // Store the current (scaled) camera for the next frame's motion vector computation.
+    _prevCamera = frameData->camera;
 
     frameData->width = (unsigned int)_renderSize.width;
     frameData->height = (unsigned int)_renderSize.height;
@@ -544,6 +599,8 @@ static const NSUInteger kMaxFramesInFlight = 3;
     [computeEncoder setTexture:_randomTexture atIndex:0];
     [computeEncoder setTexture:_accumulationTargets[0] atIndex:1];
     [computeEncoder setTexture:_accumulationTargets[1] atIndex:2];
+    [computeEncoder setTexture:_motionTexture atIndex:3];
+    [computeEncoder setTexture:_depthTexture  atIndex:4];
 
     // Mark any resources that the argument buffers reference only indirectly through
     // other argument buffers as "used".  Metal makes all the marked resources resident
@@ -567,11 +624,23 @@ static const NSUInteger kMaxFramesInFlight = 3;
     // Swap the source and destination accumulation targets for the next frame.
     std::swap(_accumulationTargets[0], _accumulationTargets[1]);
 
-    // Upscale the accumulated ray-traced result to the full drawable resolution.
+    // Upscale the accumulated ray-traced result using the active MetalFX scaler.
     if (_spatialScaler) {
         _spatialScaler.colorTexture  = _accumulationTargets[0];
         _spatialScaler.outputTexture = _upscaledTexture;
         [_spatialScaler encodeToCommandBuffer:commandBuffer];
+    } else if (_temporalScaler) {
+        _temporalScaler.colorTexture       = _accumulationTargets[0];
+        _temporalScaler.motionTexture      = _motionTexture;
+        _temporalScaler.depthTexture       = _depthTexture;
+        _temporalScaler.outputTexture      = _upscaledTexture;
+        _temporalScaler.inputContentWidth  = (NSUInteger)_renderSize.width;
+        _temporalScaler.inputContentHeight = (NSUInteger)_renderSize.height;
+        _temporalScaler.jitterOffsetX      = 0.0f;
+        _temporalScaler.jitterOffsetY      = 0.0f;
+        _temporalScaler.reset              = _temporalScalerNeedsReset;
+        _temporalScalerNeedsReset          = NO;
+        [_temporalScaler encodeToCommandBuffer:commandBuffer];
     }
 
     if (view.currentDrawable)
@@ -592,7 +661,7 @@ static const NSUInteger kMaxFramesInFlight = 3;
 
         [renderEncoder setRenderPipelineState:_copyPipeline];
 
-        [renderEncoder setFragmentTexture:(_spatialScaler ? _upscaledTexture : _accumulationTargets[0]) atIndex:0];
+        [renderEncoder setFragmentTexture:(_spatialScaler || _temporalScaler ? _upscaledTexture : _accumulationTargets[0]) atIndex:0];
 
         // Draw a quad that fills the screen.
         [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
