@@ -1,5 +1,5 @@
 /*
-See the LICENSE.txt file for this sample’s licensing information.
+See the LICENSE.txt file for this sample's licensing information.
 
 Abstract:
 The header for the renderer class that performs Metal setup and per-frame rendering.
@@ -15,5 +15,7 @@ The header for the renderer class that performs Metal setup and per-frame render
 - (instancetype)initWithDevice:(id<MTLDevice>)device
                          scene:(Scene *)scene
             usePrimitiveMotion:(BOOL)usePrimitiveMotion;
+
+- (void)resetAccumulation;
 
 @end

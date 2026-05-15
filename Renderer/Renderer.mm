@@ -413,6 +413,11 @@ static const NSUInteger kMaxFramesInFlight = 3;
     _frameIndex = 0;
 }
 
+- (void)resetAccumulation
+{
+    _frameIndex = 0;
+}
+
 - (void)updateFrameData
 {
     _frameDataIndex = (_frameDataIndex + 1) % kMaxFramesInFlight;

@@ -278,15 +278,9 @@ static inline matrix_float3x3 normalMatrixFrom4x4(matrix_float4x4 m)
                 n = -n;
             }
 
-            // Compute tangent vector in the v direction (around the tube)
-            // Derivative with respect to v
-            float3 tangent = normalize(vector3(-minorRadius * sv * cu,
-                                                minorRadius * cv,
-                                                -minorRadius * sv * su));
-            
-            if (inwardNormals) {
-                tangent = -tangent;
-            }
+            // Brushing tangent: along the major ring (u-direction).
+            // dP/du ∝ (-su, 0, cu), giving highlights that encircle the ring.
+            float3 tangent = normalize(vector3(-su, 0.0f, cu));
 
             // Transform position
             float4 p4 = vector4(local.x, local.y, local.z, 1.0f);
@@ -307,9 +301,7 @@ static inline matrix_float3x3 normalMatrixFrom4x4(matrix_float4x4 m)
     auto pushVertex = [&](NSUInteger index) {
         _vertices.push_back(gridPositions[index]);
         _normals.push_back(gridNormals[index]);
-        // Use normals as colors (map from [-1, 1] to [0, 1])
-        float3 normalColor = (gridNormals[index] + 1.0f) * 0.5f;
-        _colors.push_back(normalColor);
+        _colors.push_back((gridTangents[index] + 1.0f) * 0.5f);
     };
 
     for (NSUInteger i = 0; i < rs; ++i) {
@@ -683,7 +675,7 @@ static inline matrix_float3x3 normalMatrixFrom4x4(matrix_float4x4 m)
 
     GeometryInstance *torusInstance = [[GeometryInstance alloc] initWithGeometry:torusGeometry
                                                                         transform:matrix_identity_float4x4
-                                                                             mask:GEOMETRY_MASK_UNLIT];
+                                                                             mask:GEOMETRY_MASK_BRUSHED_METAL];
     [scene addInstance:torusInstance];
 
     transform = matrix4x4_translation(-0.335f, 0.6f, -0.29f) *
