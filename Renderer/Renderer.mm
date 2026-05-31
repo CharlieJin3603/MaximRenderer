@@ -48,6 +48,7 @@ static const NSUInteger kMaxFramesInFlight = 3;
 
     float _renderScale;
     CGSize _renderSize;
+    BOOL _useMetalFX;
     BOOL _useSpatialScaling;
     id<MTLFXSpatialScaler> _spatialScaler;
     id<MTLFXTemporalScaler> _temporalScaler;
@@ -387,53 +388,57 @@ static const NSUInteger kMaxFramesInFlight = 3;
     _motionTexture = nil;
     _depthTexture = nil;
     _temporalScalerNeedsReset = YES;
+    
+    if (_useMetalFX) {
+        if (_useSpatialScaling && [MTLFXSpatialScalerDescriptor supportsDevice:_device]) {
+            _renderSize = CGSizeMake(floor(size.width * _renderScale),
+                                     floor(size.height * _renderScale));
 
-    if (_useSpatialScaling && [MTLFXSpatialScalerDescriptor supportsDevice:_device]) {
-        _renderSize = CGSizeMake(floor(size.width * _renderScale),
-                                 floor(size.height * _renderScale));
+            MTLFXSpatialScalerDescriptor *scalerDesc = [[MTLFXSpatialScalerDescriptor alloc] init];
+            scalerDesc.inputWidth          = (NSUInteger)_renderSize.width;
+            scalerDesc.inputHeight         = (NSUInteger)_renderSize.height;
+            scalerDesc.outputWidth         = (NSUInteger)size.width;
+            scalerDesc.outputHeight        = (NSUInteger)size.height;
+            scalerDesc.colorTextureFormat  = MTLPixelFormatRGBA32Float;
+            scalerDesc.outputTextureFormat = MTLPixelFormatRGBA16Float;
 
-        MTLFXSpatialScalerDescriptor *scalerDesc = [[MTLFXSpatialScalerDescriptor alloc] init];
-        scalerDesc.inputWidth          = (NSUInteger)_renderSize.width;
-        scalerDesc.inputHeight         = (NSUInteger)_renderSize.height;
-        scalerDesc.outputWidth         = (NSUInteger)size.width;
-        scalerDesc.outputHeight        = (NSUInteger)size.height;
-        scalerDesc.colorTextureFormat  = MTLPixelFormatRGBA32Float;
-        scalerDesc.outputTextureFormat = MTLPixelFormatRGBA16Float;
+            _spatialScaler = [scalerDesc newSpatialScalerWithDevice:_device];
 
-        _spatialScaler = [scalerDesc newSpatialScalerWithDevice:_device];
+            MTLTextureDescriptor *upscaledDesc = [[MTLTextureDescriptor alloc] init];
+            upscaledDesc.pixelFormat = MTLPixelFormatRGBA16Float;
+            upscaledDesc.textureType = MTLTextureType2D;
+            upscaledDesc.width       = (NSUInteger)size.width;
+            upscaledDesc.height      = (NSUInteger)size.height;
+            upscaledDesc.storageMode = MTLStorageModePrivate;
+            upscaledDesc.usage       = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite | MTLTextureUsageRenderTarget;
+            _upscaledTexture = [_device newTextureWithDescriptor:upscaledDesc];
+        } else if ([MTLFXTemporalScalerDescriptor supportsDevice:_device]) {
+            _renderSize = CGSizeMake(floor(size.width * _renderScale),
+                                     floor(size.height * _renderScale));
 
-        MTLTextureDescriptor *upscaledDesc = [[MTLTextureDescriptor alloc] init];
-        upscaledDesc.pixelFormat = MTLPixelFormatRGBA16Float;
-        upscaledDesc.textureType = MTLTextureType2D;
-        upscaledDesc.width       = (NSUInteger)size.width;
-        upscaledDesc.height      = (NSUInteger)size.height;
-        upscaledDesc.storageMode = MTLStorageModePrivate;
-        upscaledDesc.usage       = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite | MTLTextureUsageRenderTarget;
-        _upscaledTexture = [_device newTextureWithDescriptor:upscaledDesc];
-    } else if ([MTLFXTemporalScalerDescriptor supportsDevice:_device]) {
-        _renderSize = CGSizeMake(floor(size.width * _renderScale),
-                                 floor(size.height * _renderScale));
+            MTLFXTemporalScalerDescriptor *scalerDesc = [[MTLFXTemporalScalerDescriptor alloc] init];
+            scalerDesc.inputWidth          = (NSUInteger)_renderSize.width;
+            scalerDesc.inputHeight         = (NSUInteger)_renderSize.height;
+            scalerDesc.outputWidth         = (NSUInteger)size.width;
+            scalerDesc.outputHeight        = (NSUInteger)size.height;
+            scalerDesc.colorTextureFormat  = MTLPixelFormatRGBA32Float;
+            scalerDesc.motionTextureFormat = MTLPixelFormatRG16Float;
+            scalerDesc.depthTextureFormat  = MTLPixelFormatR32Float;
+            scalerDesc.outputTextureFormat = MTLPixelFormatRGBA16Float;
 
-        MTLFXTemporalScalerDescriptor *scalerDesc = [[MTLFXTemporalScalerDescriptor alloc] init];
-        scalerDesc.inputWidth          = (NSUInteger)_renderSize.width;
-        scalerDesc.inputHeight         = (NSUInteger)_renderSize.height;
-        scalerDesc.outputWidth         = (NSUInteger)size.width;
-        scalerDesc.outputHeight        = (NSUInteger)size.height;
-        scalerDesc.colorTextureFormat  = MTLPixelFormatRGBA32Float;
-        scalerDesc.motionTextureFormat = MTLPixelFormatRG16Float;
-        scalerDesc.depthTextureFormat  = MTLPixelFormatR32Float;
-        scalerDesc.outputTextureFormat = MTLPixelFormatRGBA16Float;
+            _temporalScaler = [scalerDesc newTemporalScalerWithDevice:_device];
 
-        _temporalScaler = [scalerDesc newTemporalScalerWithDevice:_device];
-
-        MTLTextureDescriptor *upscaledDesc = [[MTLTextureDescriptor alloc] init];
-        upscaledDesc.pixelFormat = MTLPixelFormatRGBA16Float;
-        upscaledDesc.textureType = MTLTextureType2D;
-        upscaledDesc.width       = (NSUInteger)size.width;
-        upscaledDesc.height      = (NSUInteger)size.height;
-        upscaledDesc.storageMode = MTLStorageModePrivate;
-        upscaledDesc.usage       = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite | MTLTextureUsageRenderTarget;
-        _upscaledTexture = [_device newTextureWithDescriptor:upscaledDesc];
+            MTLTextureDescriptor *upscaledDesc = [[MTLTextureDescriptor alloc] init];
+            upscaledDesc.pixelFormat = MTLPixelFormatRGBA16Float;
+            upscaledDesc.textureType = MTLTextureType2D;
+            upscaledDesc.width       = (NSUInteger)size.width;
+            upscaledDesc.height      = (NSUInteger)size.height;
+            upscaledDesc.storageMode = MTLStorageModePrivate;
+            upscaledDesc.usage       = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite | MTLTextureUsageRenderTarget;
+            _upscaledTexture = [_device newTextureWithDescriptor:upscaledDesc];
+        } else {
+            _renderSize = size;
+        }
     } else {
         _renderSize = size;
     }
