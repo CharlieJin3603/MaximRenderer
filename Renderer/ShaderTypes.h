@@ -45,6 +45,7 @@ struct FrameData
     unsigned int height;
     unsigned int frameIndex;
     Camera camera;
+    Camera prevCamera;
     unsigned int lightCount;
 };
 
