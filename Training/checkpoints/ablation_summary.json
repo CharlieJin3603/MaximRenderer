@@ -1,0 +1,98 @@
+[
+  {
+    "run": "L4_D64_gelu",
+    "config": {
+      "n_layers": 4,
+      "hidden_dim": 64,
+      "activation": "gelu",
+      "n_freqs": 16
+    },
+    "best_epoch": 495,
+    "best_val_loss": 0.0007156809442676604,
+    "best_val_psnr": 31.452805461639795
+  },
+  {
+    "run": "L3_D64_gelu",
+    "config": {
+      "n_layers": 3,
+      "hidden_dim": 64,
+      "activation": "gelu",
+      "n_freqs": 16
+    },
+    "best_epoch": 498,
+    "best_val_loss": 0.0009925116319209337,
+    "best_val_psnr": 30.032643947417004
+  },
+  {
+    "run": "L4_D32_gelu",
+    "config": {
+      "n_layers": 4,
+      "hidden_dim": 32,
+      "activation": "gelu",
+      "n_freqs": 16
+    },
+    "best_epoch": 500,
+    "best_val_loss": 0.001669416087679565,
+    "best_val_psnr": 27.774354056444107
+  },
+  {
+    "run": "L3_D32_gelu",
+    "config": {
+      "n_layers": 3,
+      "hidden_dim": 32,
+      "activation": "gelu",
+      "n_freqs": 16
+    },
+    "best_epoch": 500,
+    "best_val_loss": 0.0022713227663189173,
+    "best_val_psnr": 26.437211459779974
+  },
+  {
+    "run": "L4_D64_relu",
+    "config": {
+      "n_layers": 4,
+      "hidden_dim": 64,
+      "activation": "relu",
+      "n_freqs": 16
+    },
+    "best_epoch": 500,
+    "best_val_loss": 0.003433805424720049,
+    "best_val_psnr": 24.642243176097317
+  },
+  {
+    "run": "L3_D64_relu",
+    "config": {
+      "n_layers": 3,
+      "hidden_dim": 64,
+      "activation": "relu",
+      "n_freqs": 16
+    },
+    "best_epoch": 490,
+    "best_val_loss": 0.0035026806872338057,
+    "best_val_psnr": 24.55599452203625
+  },
+  {
+    "run": "L4_D32_relu",
+    "config": {
+      "n_layers": 4,
+      "hidden_dim": 32,
+      "activation": "relu",
+      "n_freqs": 16
+    },
+    "best_epoch": 457,
+    "best_val_loss": 0.004064812324941158,
+    "best_val_psnr": 23.909595012689326
+  },
+  {
+    "run": "L3_D32_relu",
+    "config": {
+      "n_layers": 3,
+      "hidden_dim": 32,
+      "activation": "relu",
+      "n_freqs": 16
+    },
+    "best_epoch": 500,
+    "best_val_loss": 0.00591731583699584,
+    "best_val_psnr": 22.27875249617059
+  }
+]

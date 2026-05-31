@@ -214,6 +214,8 @@ kernel void raytracingKernel(uint2 tid [[thread_position_in_grid]],
                              texture2d<unsigned int> randomTex,
                              texture2d<float> prevTex,
                              texture2d<float, access::write> dstTex,
+                             texture2d<float, access::write> motionTex,
+                             texture2d<float, access::write> depthTex,
                              device MeshResources *resources,
                              device MTLAccelerationStructureMotionInstanceDescriptor *instances,
                              device AreaLight *areaLights,
@@ -269,6 +271,11 @@ kernel void raytracingKernel(uint2 tid [[thread_position_in_grid]],
 
         float3 accumulatedColor = float3(0.0f, 0.0f, 0.0f);
 
+        // Motion vector and depth outputs for MetalFX temporal scaling.
+        float2 primaryMotion = float2(0.0f, 0.0f);
+        float primaryDepth  = 1.0e6f;
+        bool primaryHitCaptured = false;
+
         // Create an intersector to test for intersection between the ray and the geometry in the scene.
         intersectorType i;
         
@@ -294,6 +301,32 @@ kernel void raytracingKernel(uint2 tid [[thread_position_in_grid]],
             if (intersection.type == intersection_type::none)
                 break;
             
+            // Compute the intersection point in world space.
+            float3 worldSpaceIntersectionPoint = ray.origin + ray.direction * intersection.distance;
+
+            // Capture motion vector and depth from the primary (first) hit for temporal scaling.
+            if (!primaryHitCaptured) {
+                primaryHitCaptured = true;
+                primaryDepth = intersection.distance;
+
+                // Project the world-space hit point through the previous frame's camera
+                // to get a screen-space motion vector in pixels (prevPixel - currPixel).
+                float3 dir = worldSpaceIntersectionPoint - frameData.prevCamera.position;
+                float w = dot(dir, frameData.prevCamera.forward);
+                if (w > 0.0f) {
+                    float3 pr = frameData.prevCamera.right;
+                    float3 pu = frameData.prevCamera.up;
+                    
+                    float prevUVx = dot(dir, pr) / (w * dot(pr, pr));
+                    float prevUVy = dot(dir, pu) / (w * dot(pu, pu));
+                    
+                    float2 prevPixel = (float2(prevUVx, prevUVy) * 0.5f + 0.5f) *
+                                       float2(frameData.width, frameData.height);
+                    float2 currPixel = float2(tid) + 0.5f;
+                    primaryMotion = prevPixel - currPixel;
+                }
+            }
+            
             unsigned int instanceIndex = intersection.instance_id;
 
             // Look up the mask for this instance, which indicates what type of geometry the ray hits.
@@ -310,9 +343,6 @@ kernel void raytracingKernel(uint2 tid [[thread_position_in_grid]],
             bool isUnlit = (mask == GEOMETRY_MASK_UNLIT);
 
             // The ray hits something. Look up the transformation matrix for this instance.
-            
-            // Compute the intersection point in world space.
-            float3 worldSpaceIntersectionPoint = ray.origin + ray.direction * intersection.distance;
 
             unsigned primitiveIndex = intersection.primitive_id;
             unsigned int geometryIndex = instances[instanceIndex].accelerationStructureIndex;
@@ -481,6 +511,10 @@ kernel void raytracingKernel(uint2 tid [[thread_position_in_grid]],
             }
         }
 
+        // Write motion vector and depth for the primary hit (used by MetalFX temporal scaler).
+        motionTex.write(float4(primaryMotion.x, primaryMotion.y, 0.0f, 0.0f), tid);
+        depthTex.write(float4(primaryDepth, 0.0f, 0.0f, 0.0f), tid);
+
         // Average this frame's sample with all of the previous frame's samples.
         if (frameData.frameIndex > 0)
         {
@@ -502,6 +536,8 @@ kernel void raytracingKernel<acceleration_structure<instancing, instance_motion,
                                                                                                                                                                                                  texture2d<unsigned int> randomTex,
                                                                                                                                                                                                  texture2d<float> prevTex,
                                                                                                                                                                                                  texture2d<float, access::write> dstTex,
+                                                                                                                                                                                                 texture2d<float, access::write> motionTex,
+                                                                                                                                                                                                 texture2d<float, access::write> depthTex,
                                                                                                                                                                                                  device MeshResources *resources,
                                                                                                                                                                                                  device MTLAccelerationStructureMotionInstanceDescriptor *instances,
                                                                                                                                                                                                  device AreaLight *areaLights,
@@ -515,6 +551,8 @@ kernel void raytracingKernel<acceleration_structure<instancing, instance_motion>
                                                                                                                                                              texture2d<unsigned int> randomTex,
                                                                                                                                                              texture2d<float> prevTex,
                                                                                                                                                              texture2d<float, access::write> dstTex,
+                                                                                                                                                             texture2d<float, access::write> motionTex,
+                                                                                                                                                             texture2d<float, access::write> depthTex,
                                                                                                                                                              device MeshResources *resources,
                                                                                                                                                              device MTLAccelerationStructureMotionInstanceDescriptor *instances,
                                                                                                                                                              device AreaLight *areaLights,
